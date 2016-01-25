@@ -4,6 +4,8 @@ The starfall clients download the code automatically from this github repository
 
 #### s_rp team
 - suunrider: main developer
+- Urumasi: developer
+- OpenQuestion/Forsaken: developer
 - Cake: graphic designer
 
 
