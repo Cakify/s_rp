@@ -1,0 +1,146 @@
+--[[
+  Star RP Launcher by the s_rp team
+
+  Description:
+    Star RP is a 2D MMORPG game in starfall.
+    This project is being developed by the s_rp team (https://github.com/orgs/GModSRPTeam/people)
+
+
+
+  Requirements:
+    - wiremod (https://github.com/wiremod/wire)
+    - starfallEx (https://github.com/thegrb93/StarfallEx)
+
+
+  Instructions:
+    - Place a chip containing this code
+    - Link a screen component to this chip
+    - The chip will then automatically download the code
+
+
+  License: MIT (see https://github.com/GModSRPTeam/s_rp/blob/master/LICENSE)
+
+
+  Have fun!
+]]
+
+
+--@name Star RP Launcher
+--@author s_rp team
+
+
+local function loadCode( code ) -- like loadstring but errors when failing to parse
+
+  local fn = loadstring( code )
+
+  if type( fn ) == "function" then
+    fn()
+  else
+    error( fn )
+  end
+
+end
+
+
+if SERVER then -- Server
+
+    local REPOSITORY = "https://raw.githubusercontent.com/GModSRPTeam/s_rp/master/src/"
+
+
+    local FILES = {
+        "init.lua",
+        "lib/class.lua",
+        "lib/util.lua",
+    }
+
+    local safeHTTPGet, getFile, loadFiles, runFiles, runOnClients
+
+    function safeHTTPGet( url, success, fail )
+        if http.canRequest() then
+            http.get( url, success, fail )
+        else
+            timer.create( "LoadHTTP_" .. url, 1.75, 1, function()
+                safeHTTPGet( url, success, fail )
+            end )
+        end
+    end
+
+
+    local loadedFiles = {}
+
+    function getFile( filename )
+        safeHTTPGet( REPOSITORY .. filename, function( content )
+          loadedFiles[ #loadedFiles + 1 ] = {
+            filename = filename,
+            content = content
+          }
+
+          if #loadedFiles == #FILES then -- finished loading every file
+            runFiles()
+          end
+
+        end, function( e )
+          error( e )
+        end )
+    end
+
+
+    function loadFiles()
+      for _, filename in ipairs( FILES ) do
+          getFile( filename )
+      end
+    end
+
+
+    function runOnClients( code )
+
+      local data = fastlz.compress( code )
+
+      net.start( "loadCode" )
+      net.writeUInt( #data, 16 ) -- size
+      net.writeData( data, #data )
+      net.send()
+    end
+
+
+    function runFiles()
+      for _, file in pairs( loadedFiles ) do
+
+        local ext = file.filename:sub( -7, -5 ) -- extension without .lua
+
+        if ext == "_cl" then -- clientside file
+
+          runOnClients( file.content )
+
+        elseif ext == "_sv" then -- serverside file
+
+          loadCode( file.content )
+
+        else -- shared
+
+          runOnClients( file.content )
+          loadCode( file.content )
+
+        end
+      end
+    end
+
+    hook.add( "Initialize", "RunLauncher", function()
+
+      loadFiles()
+
+    end )
+
+
+else -- Client
+
+
+    hook.add( "net", "loadCode", function( name )
+        if name == "loadCode" then
+
+            loadCode( fastlz.decompress( net.readData( net.readUInt( 16 ) ) ) )
+
+        end
+    end )
+
+end
