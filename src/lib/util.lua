@@ -76,7 +76,7 @@ do
 	end
 
 
-	Util.NetReceive( "newGlobal", function()
+	Util.netReceive( "newGlobal", function()
 		local globalName = net.readString()
 		globals[ globalName ] = read()
 	end )
@@ -121,7 +121,7 @@ function Util.sendLua( code, ply )
 end
 
 
-Util.NetReceive( "sendlua", function()
+Util.netReceive( "sendlua", function()
 	local code = net.readString()
 	local fn = loadstring( code )
 	if type( fn ) == "string" then
